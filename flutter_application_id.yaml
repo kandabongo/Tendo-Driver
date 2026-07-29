@@ -1,0 +1,7 @@
+flutter_application_id:
+  android:
+    id: "com.tendo.driver"
+    name: "Glover Driver"
+  ios:
+    id: "com.tendo.driver"
+    name: "Glover Driver"
