@@ -1,7 +1,7 @@
 // import 'package:velocity_x/velocity_x.dart';
 
 class Api {
-  static const defaultBaseUrl = "https://glover.edentech.online/api";
+  static const defaultBaseUrl = "https://login.letstwende.com/api";
   static const buildBaseUrl = String.fromEnvironment(
     "api",
     defaultValue: defaultBaseUrl,

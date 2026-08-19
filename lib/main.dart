@@ -55,7 +55,7 @@ void main() async {
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
       //font
-      await GoogleFonts.pendingFonts([GoogleFonts.plusJakartaSans()]);
+      GoogleFonts.pendingFonts([GoogleFonts.plusJakartaSans()]);
       // Run app!
       runApp(LocalizedApp(child: MyApp()));
     },
