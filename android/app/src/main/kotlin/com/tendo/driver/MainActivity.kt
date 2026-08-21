@@ -1,4 +1,4 @@
-package com.twendeapp.driver
+package com.tendo.driver
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
