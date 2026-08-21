@@ -42,7 +42,7 @@
                 
     <application
         android:name="${applicationName}"
-        android:label="Glover Driver"
+        android:label="Tendo Driver"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/launcher_icon"
