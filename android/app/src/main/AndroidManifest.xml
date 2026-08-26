@@ -17,11 +17,9 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-   
+
     <!-- Adapt to the foreground service type(s) desired, these are just examples -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <queries>
         <intent>
@@ -39,7 +37,7 @@
     </queries>
 
 
-                
+
     <application
         android:name="${applicationName}"
         android:label="Tendo Driver"
@@ -102,7 +100,7 @@
         <meta-data android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyB8Bcdua1j76oCs6YlXSY72KKkTr9G6sfU"/>
         <!-- for the overlay permission usage -->
-        <service android:name="flutter.overlay.window.flutter_overlay_window.OverlayService" 
+        <service android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -113,7 +111,7 @@
         <service
             android:name="de.julianassmann.flutter_background.IsolateHolderService"
             android:exported="false"
-            android:foregroundServiceType="dataSync|specialUse|location" />
+            android:foregroundServiceType="specialUse|location" />
 
         <provider
             android:name="com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFileProvider"
