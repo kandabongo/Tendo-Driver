@@ -6,7 +6,7 @@ import 'package:dio/dio.dart';
 import 'constants/app_languages.dart';
 
 // Enter your API Keys here
-const String geminiApiKey = "AIzaSyCiVXNMt-5mV9bIrZbjCmaACoriR5dET9g";
+  // Gemini key removed - rotated in Google AI Studio
 const String openAiApiKey = "";
 const String anthropicApiKey = "";
 
