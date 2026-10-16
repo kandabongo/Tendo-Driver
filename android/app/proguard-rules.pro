@@ -1,0 +1,6 @@
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+-keep class com.ryanheise.just_audio.** { *; }
+-keep class com.ryanheise.audioservice.** { *; }
+-keep class com.ryanheise.audio_session.** { *; }
+-dontwarn com.ryanheise.**
