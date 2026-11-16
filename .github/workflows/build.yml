@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up Java
@@ -38,6 +40,17 @@ jobs:
         run: flutter build appbundle --release
       - name: Show signing fingerprint of the AAB
         run: keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab | grep -E "SHA1|SHA256|Owner" | tee -a $GITHUB_STEP_SUMMARY
+      - name: Publish signed APK as a Release (one-tap phone install)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: phone-registration-${{ github.run_number }}
+          name: Driver app - phone-first registration (build ${{ github.run_number }})
+          body: |
+            Signed release build of the Tendo Driver app with phone-first registration.
+            Install over the current app (same signing key - no uninstall, keeps login).
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
