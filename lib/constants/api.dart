@@ -55,6 +55,12 @@ class Api {
   static const cancelTaxiBooking = "/taxi/order/cancel";
   static const rejectTaxiBookingAssignment = "/taxi/order/asignment/reject";
   static const acceptTaxiBookingAssignment = "/taxi/order/asignment/accept";
+
+  //Shared Rides (driver; feature-gated server-side, disabled by default)
+  static const sharedRideCurrentTrip = "/taxi/shared/trip/current";
+  static const sharedRideTrip = "/taxi/shared/trip"; // /{id}/accept|decline
+  static const sharedRidePassenger =
+      "/taxi/shared/passenger"; // /{id}/start|complete
   static const rating = "/rating";
   static const vehicleTypes = "/partner/vehicle/types";
   static const carMakes = "/partner/car/makes";
