@@ -3,6 +3,9 @@ import 'package:fuodz/constants/app_colors.dart';
 import 'package:fuodz/view_models/taxi/taxi.vm.dart';
 import 'package:fuodz/views/pages/taxi/widgets/location_permission.view.dart';
 import 'package:fuodz/views/pages/taxi/widgets/sos_button.dart';
+import 'package:fuodz/constants/app_taxi_settings.dart';
+import 'package:fuodz/views/pages/taxi/shared_trip.page.dart';
+import 'package:localize_and_translate/localize_and_translate.dart';
 import 'package:fuodz/views/pages/taxi/widgets/statuses/idle.view.dart';
 import 'package:fuodz/widgets/base.page.dart';
 import 'package:fuodz/widgets/busy_indicator.dart';
@@ -69,6 +72,33 @@ class _TaxiOrderPageState extends State<TaxiOrderPage>
 
               //sos button
               SOSButton(),
+              // SHARED RIDES (additive, flag-gated): entry to the driver's
+              // shared-trip view. Hidden entirely when the backend flag is off,
+              // so the private-taxi driver screen is unchanged by default.
+              if (AppTaxiSettings.sharedRidesEnabled)
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SharedTripPage(),
+                        ),
+                      ),
+                      child: HStack([
+                        Icon(Icons.groups_rounded,
+                            size: 18, color: Colors.white),
+                        "Shared Trip".tr().text.white.semiBold.make().px8(),
+                      ])
+                          .p8()
+                          .box
+                          .color(AppColor.primaryColor)
+                          .roundedSM
+                          .make()
+                          .py8(),
+                    ),
+                  ),
+                ),
               //
               StreamBuilder<Widget?>(
                 stream: vm.uiStream,
