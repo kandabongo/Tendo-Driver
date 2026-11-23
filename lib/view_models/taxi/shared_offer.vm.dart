@@ -5,6 +5,7 @@ import 'package:fuodz/models/shared_trip_offer.dart';
 import 'package:fuodz/requests/shared_trip.request.dart';
 import 'package:fuodz/services/app.service.dart';
 import 'package:fuodz/view_models/base.view_model.dart';
+import 'package:velocity_x/velocity_x.dart';
 
 /// SHARED RIDES (driver) — incoming-offer controller.
 ///

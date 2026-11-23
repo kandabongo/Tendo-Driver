@@ -45,10 +45,11 @@ jobs:
       - name: Publish signed APK as a Release (one-tap phone install)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: phone-registration-${{ github.run_number }}
-          name: Driver app - phone-first registration (build ${{ github.run_number }})
+          tag_name: shared-rides-driver-${{ github.run_number }}
+          name: Driver app - Shared Rides dispatch (build ${{ github.run_number }})
           body: |
-            Signed release build of the Tendo Driver app with phone-first registration.
+            Signed release build of the Tendo Driver app with Shared Rides driver dispatch
+            (incoming offer, server-driven countdown, accept/decline, resume).
             Install over the current app (same signing key - no uninstall, keeps login).
           files: |
             build/app/outputs/flutter-apk/app-release.apk
