@@ -8,10 +8,6 @@ on:
         default: ""
   push:
     branches: [main, "feature/shared-rides-driver"]
-    # A commit that only changes CI config should not auto-publish a release;
-    # keeps release tags pointing at real app-code commits.
-    paths-ignore:
-      - ".github/**"
 jobs:
   build:
     runs-on: ubuntu-latest
