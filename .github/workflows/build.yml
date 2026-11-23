@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Run Shared Rides Dart tests
-        run: flutter test test/shared_trip_model_test.dart
+        run: flutter test
       - name: Build release APK
         run: flutter build apk --release
       - name: Build release App Bundle
