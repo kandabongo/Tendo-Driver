@@ -58,6 +58,7 @@ class Api {
 
   //Shared Rides (driver; feature-gated server-side, disabled by default)
   static const sharedRideCurrentTrip = "/taxi/shared/trip/current";
+  static const sharedRideOffers = "/taxi/shared/offers"; // incoming offers for this driver
   static const sharedRideTrip = "/taxi/shared/trip"; // /{id}/accept|decline
   static const sharedRidePassenger =
       "/taxi/shared/passenger"; // /{id}/start|complete

@@ -17,6 +17,7 @@ import 'package:fuodz/requests/order.request.dart';
 import 'package:fuodz/services/app.service.dart';
 import 'package:fuodz/services/chat.service.dart';
 import 'package:fuodz/services/notification.service.dart';
+import 'package:fuodz/services/shared_offer.service.dart';
 import 'package:localize_and_translate/localize_and_translate.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:singleton/singleton.dart';
@@ -50,11 +51,15 @@ class FirebaseService {
     final allTopic = "${topicPrefix}all";
     firebaseMessaging.subscribeToTopic(allTopic);
 
+    //SHARED RIDES: surface incoming offers + recover on resume (flag-gated inside)
+    SharedOfferService().start();
+
     //on notification tap tp bring app back to life
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       saveNewNotification(message);
       selectNotification("From onMessageOpenedApp");
       refreshOrdersList(message);
+      SharedOfferService().onPush(message.data);
     });
 
     //normal notification listener
@@ -62,6 +67,7 @@ class FirebaseService {
       saveNewNotification(message);
       showNotification(message);
       refreshOrdersList(message);
+      SharedOfferService().onPush(message.data);
     });
   }
 
