@@ -1,8 +1,17 @@
 name: Build Release APK
 on:
   workflow_dispatch:
+    inputs:
+      build_ref:
+        description: "Commit SHA or ref to build and tag. Defaults to the triggering commit."
+        required: false
+        default: ""
   push:
     branches: [main, "feature/shared-rides-driver"]
+    # A commit that only changes CI config should not auto-publish a release;
+    # keeps release tags pointing at real app-code commits.
+    paths-ignore:
+      - ".github/**"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -10,6 +19,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Build the explicitly requested ref when dispatched, otherwise the
+          # triggering commit. No shallow-clone truncation of the ref.
+          ref: ${{ github.event.inputs.build_ref || github.sha }}
+      - name: Resolve built commit SHA
+        id: meta
+        # The actual commit that was checked out — used so the release tag
+        # points to exactly what was built, not the default branch.
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -47,6 +65,9 @@ jobs:
         with:
           tag_name: shared-rides-driver-${{ github.run_number }}
           name: Driver app - Shared Rides dispatch (build ${{ github.run_number }})
+          # Point the tag at the exact commit that was built (see Resolve step),
+          # instead of letting the action default to the repo's default branch.
+          target_commitish: ${{ steps.meta.outputs.sha }}
           body: |
             Signed release build of the Tendo Driver app with Shared Rides driver dispatch
             (incoming offer, server-driven countdown, accept/decline, resume).
