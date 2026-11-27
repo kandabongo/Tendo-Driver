@@ -47,6 +47,12 @@ class SharedTripRequest extends HttpService {
   }
 
   /// Start a passenger's leg (passenger onboard).
+  /// Driver is en route to a passenger's pickup (server-authoritative status).
+  Future<ApiResponse> enRoutePassenger(int passengerId) async {
+    return ApiResponse.fromResponse(
+        await post("${Api.sharedRidePassenger}/$passengerId/en_route", {}));
+  }
+
   Future<ApiResponse> startPassenger(int passengerId) async {
     return ApiResponse.fromResponse(
         await post("${Api.sharedRidePassenger}/$passengerId/start", {}));

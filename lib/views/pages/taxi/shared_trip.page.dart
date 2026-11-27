@@ -181,32 +181,50 @@ class SharedTripPage extends StatelessWidget {
 
   Widget _actions(BuildContext context, SharedTripViewModel model,
       SharedTripPassenger p, bool busy) {
+    final spinner = const SizedBox(width: 16, height: 16, child: BusyIndicator());
+
+    // Dropped off — journey done.
     if (p.isDropped) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.check_circle, color: Colors.green, size: 18),
           const SizedBox(width: 6),
-          Text("Dropped off".tr(),
-              style: const TextStyle(color: Colors.green)),
+          Text("Dropped off".tr(), style: const TextStyle(color: Colors.green)),
         ],
       );
     }
+
+    // Onboard — in transit → Complete.
     if (p.isOnboard) {
       return ElevatedButton.icon(
         onPressed: busy ? null : () => model.completePassenger(p),
-        icon: busy
-            ? const SizedBox(width: 16, height: 16, child: BusyIndicator())
-            : const Icon(Icons.flag_rounded, size: 18),
+        icon: busy ? spinner : const Icon(Icons.flag_rounded, size: 18),
         label: Text("Complete journey".tr()),
       );
     }
+
+    // En route → Arrived (client step) → Start (onboard).
+    if (p.isEnRoute) {
+      if (!model.isArrived(p.id)) {
+        return OutlinedButton.icon(
+          onPressed: busy ? null : () => model.markArrived(p),
+          icon: const Icon(Icons.pin_drop_rounded, size: 18),
+          label: Text("Arrived at pickup".tr()),
+        );
+      }
+      return ElevatedButton.icon(
+        onPressed: busy ? null : () => model.startPassenger(p),
+        icon: busy ? spinner : const Icon(Icons.play_arrow_rounded, size: 18),
+        label: Text("Start journey (passenger onboard)".tr()),
+      );
+    }
+
+    // Accepted / offered — not yet moving → En route.
     return OutlinedButton.icon(
-      onPressed: busy ? null : () => model.startPassenger(p),
-      icon: busy
-          ? const SizedBox(width: 16, height: 16, child: BusyIndicator())
-          : const Icon(Icons.play_arrow_rounded, size: 18),
-      label: Text("Start (passenger onboard)".tr()),
+      onPressed: busy ? null : () => model.enRoutePassenger(p),
+      icon: busy ? spinner : const Icon(Icons.navigation_rounded, size: 18),
+      label: Text("En route to pickup".tr()),
     );
   }
 

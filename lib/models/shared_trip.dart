@@ -47,6 +47,9 @@ class SharedTripPassenger {
 
   bool get isOnboard => status == "onboard";
   bool get isDropped => status == "dropped";
+  bool get isEnRoute => status == "en_route";
+  /// Still awaiting the driver setting off (freshly accepted / offered).
+  bool get isAwaitingEnRoute => status == "accepted" || status == "offered";
   bool get isActive => status != "dropped" && status != "cancelled" && status != "rejected";
 }
 

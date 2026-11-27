@@ -209,6 +209,36 @@ class SharedTripViewModel extends MyBaseViewModel {
     setBusy(false);
   }
 
+  // Client-side "arrived at pickup" markers. Shared rides have no server
+  // 'arrived' status (the server lifecycle is accepted -> en_route -> onboard ->
+  // dropped), so Arrived is a local UI step between En route and Start. It never
+  // changes server state.
+  final Set<int> _arrivedPassengers = {};
+  bool isArrived(int id) => _arrivedPassengers.contains(id);
+  void markArrived(SharedTripPassenger p) {
+    _arrivedPassengers.add(p.id);
+    notifyListeners();
+  }
+
+  Future<void> enRoutePassenger(SharedTripPassenger p) async {
+    if (isPassengerBusy(p.id)) return;
+    _busyPassengers.add(p.id);
+    notifyListeners();
+    try {
+      final res = await _request.enRoutePassenger(p.id);
+      if (res.allGood) {
+        toastSuccessful("On your way to pickup".tr());
+        await loadTrip();
+      } else {
+        toastError(res.message ?? "Could not update".tr());
+      }
+    } catch (error) {
+      toastError("$error");
+    }
+    _busyPassengers.remove(p.id);
+    notifyListeners();
+  }
+
   Future<void> startPassenger(SharedTripPassenger p) async {
     if (isPassengerBusy(p.id)) return;
     _busyPassengers.add(p.id);

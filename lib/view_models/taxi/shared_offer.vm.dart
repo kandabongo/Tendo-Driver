@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fuodz/extensions/context.dart';
 import 'package:fuodz/models/shared_trip_offer.dart';
 import 'package:fuodz/requests/shared_trip.request.dart';
+import 'package:fuodz/services/alert.service.dart';
 import 'package:fuodz/services/app.service.dart';
 import 'package:fuodz/view_models/base.view_model.dart';
 import 'package:velocity_x/velocity_x.dart';
@@ -48,17 +49,21 @@ class SharedOfferViewModel extends MyBaseViewModel {
       if (res.allGood) {
         _pop(offer.sharedTripId); // success -> navigate into SharedTripPage
       } else {
-        // backend rejected: expired / already assigned / not eligible
-        viewContext.showToast(
-          msg: res.message ?? "This offer is no longer available",
-          bgColor: Colors.red,
-          textColor: Colors.white,
-        );
+        // Backend rejected: expired / already assigned / not eligible. Show the
+        // REASON in a persistent dialog (not a fleeting toast) so the driver
+        // understands why no trip opened, instead of silently landing on home.
         _pop(null);
+        AlertService.error(
+          title: "Couldn't accept trip".tr(),
+          text: res.message ?? "This shared offer is no longer available.".tr(),
+        );
       }
     } catch (e) {
-      viewContext.showToast(msg: "$e", bgColor: Colors.red, textColor: Colors.white);
       _pop(null);
+      AlertService.error(
+        title: "Couldn't accept trip".tr(),
+        text: "$e",
+      );
     }
     setBusy(false);
   }
