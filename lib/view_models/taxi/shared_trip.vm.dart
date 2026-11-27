@@ -90,10 +90,17 @@ class SharedTripViewModel extends MyBaseViewModel {
   LatLng? driverLatLng;
   List<SharedStop> orderedStops = [];
   StreamSubscription<Position>? _locStream;
+  // Poll the active trip so a passenger pooled on mid-journey (a new offer)
+  // surfaces live even without a push. Stopped on dispose.
+  Timer? _pollTimer;
 
   bool isPassengerBusy(int id) => _busyPassengers.contains(id);
 
   List<SharedTripPassenger> get passengers => trip?.activePassengers ?? [];
+
+  /// Pooled passengers awaiting this driver's accept/decline right now.
+  List<SharedTripPassenger> get pendingOffers =>
+      passengers.where((p) => p.isPendingPooledOffer).toList();
 
   bool get hasTrip => trip != null;
 
@@ -124,6 +131,26 @@ class SharedTripViewModel extends MyBaseViewModel {
       _updateDriverMarker();
       if (!_disposed) notifyListeners();
     });
+    // Live refresh so a passenger pooled on mid-trip appears as a new offer
+    // without the driver manually pulling to refresh. Lightweight read-only poll.
+    _pollTimer ??= Timer.periodic(const Duration(seconds: 12), (_) {
+      if (_disposed || !hasTrip) return;
+      _refreshTripSilently();
+    });
+  }
+
+  /// A quiet reload (no spinner) used by the poll so the UI doesn't flicker.
+  Future<void> _refreshTripSilently() async {
+    try {
+      final latest = await _request.currentTrip();
+      if (_disposed) return;
+      trip = latest;
+      _rebuildStopsAndMarkers();
+      await _rebuildAllMarkers();
+      if (!_disposed) notifyListeners();
+    } catch (_) {
+      // transient — keep last good state, the next tick retries
+    }
   }
 
   void setMapController(GoogleMapController c) {
@@ -173,6 +200,7 @@ class SharedTripViewModel extends MyBaseViewModel {
   void dispose() {
     _disposed = true;
     _locStream?.cancel();
+    _pollTimer?.cancel();
     mapController = null;
     super.dispose();
   }
@@ -182,6 +210,9 @@ class SharedTripViewModel extends MyBaseViewModel {
     final stops = <SharedStop>[];
     for (final p in passengers) {
       if (p.isDropped) continue;
+      // A pooled passenger not yet accepted is an offer, not a stop — never
+      // route to someone the driver hasn't accepted.
+      if (p.isPendingPooledOffer) continue;
       if (p.isOnboard) {
         if (p.dropoffLatitude != null && p.dropoffLongitude != null) {
           stops.add(SharedStop(
@@ -221,6 +252,85 @@ class SharedTripViewModel extends MyBaseViewModel {
       toastError("$error");
     }
     setBusy(false);
+  }
+
+  /// Driver ACCEPTS a pooled passenger offered onto the active trip
+  /// (offered -> accepted). The route/stop list recalculates on reload.
+  Future<void> acceptPassenger(SharedTripPassenger p) async {
+    if (isPassengerBusy(p.id)) return;
+    _busyPassengers.add(p.id);
+    notifyListeners();
+    try {
+      final res = await _request.acceptPassenger(p.id);
+      if (res.allGood) {
+        toastSuccessful("Passenger added to your trip".tr());
+        await loadTrip();
+      } else {
+        toastError(res.message ?? "Could not accept passenger".tr());
+      }
+    } catch (error) {
+      toastError("$error");
+    }
+    _busyPassengers.remove(p.id);
+    notifyListeners();
+  }
+
+  /// Driver DECLINES a pooled passenger — frees the seat; the trip continues.
+  Future<void> declinePassenger(SharedTripPassenger p) async {
+    if (isPassengerBusy(p.id)) return;
+    _busyPassengers.add(p.id);
+    notifyListeners();
+    try {
+      final res = await _request.declinePassenger(p.id);
+      if (res.allGood) {
+        toastSuccessful("Passenger declined".tr());
+        await loadTrip();
+      } else {
+        toastError(res.message ?? "Could not decline".tr());
+      }
+    } catch (error) {
+      toastError("$error");
+    }
+    _busyPassengers.remove(p.id);
+    notifyListeners();
+  }
+
+  /// Driver cancels ONE already-accepted passenger without ending the trip.
+  Future<void> cancelOnePassenger(SharedTripPassenger p) async {
+    if (isPassengerBusy(p.id)) return;
+    await AlertService.confirm(
+      title: "Cancel this passenger?".tr(),
+      text: "This cancels only this passenger. Your other passengers continue."
+          .tr(),
+      confirmBtnText: "Yes, cancel".tr(),
+      onConfirm: () => _doCancelOnePassenger(p),
+    );
+  }
+
+  Future<void> _doCancelOnePassenger(SharedTripPassenger p) async {
+    if (isPassengerBusy(p.id)) return;
+    _busyPassengers.add(p.id);
+    notifyListeners();
+    try {
+      final res = await _request.cancelOnePassenger(p.id);
+      if (res.allGood) {
+        toastSuccessful("Passenger cancelled".tr());
+        // If that was the last passenger the backend closes the trip; reloading
+        // reflects whichever state we're now in.
+        final closed = (res.body is Map) && (res.body["trip_closed"] == true);
+        if (closed && !_disposed) {
+          Navigator.of(viewContext).pop();
+        } else {
+          await loadTrip();
+        }
+      } else {
+        toastError(res.message ?? "Could not cancel passenger".tr());
+      }
+    } catch (error) {
+      toastError("$error");
+    }
+    _busyPassengers.remove(p.id);
+    notifyListeners();
   }
 
   // Client-side "arrived at pickup" markers. Shared rides have no server
@@ -333,6 +443,7 @@ class SharedTripViewModel extends MyBaseViewModel {
     final pickupIcon = await _icon(AppImages.pickupLocation);
     final dropoffIcon = await _icon(AppImages.dropoffLocation);
     for (final p in passengers) {
+      if (p.isPendingPooledOffer) continue; // not on the map until accepted
       if (p.pickupLatitude != null && p.pickupLongitude != null && !p.isOnboard && !p.isDropped) {
         markers.add(Marker(
           markerId: MarkerId("pickup_${p.id}"),

@@ -11,6 +11,11 @@ class SharedTripPassenger {
   final double? dropoffLatitude;
   final double? dropoffLongitude;
   final double passengerFare;
+  // A pooled passenger awaiting THIS driver's accept/decline, with the live
+  // countdown from the server. is_pending_offer is authoritative (an 'offered'
+  // first passenger before dispatch carries no pooled window).
+  final bool isPendingOffer;
+  final int? offerSecondsRemaining;
 
   SharedTripPassenger({
     required this.id,
@@ -23,6 +28,8 @@ class SharedTripPassenger {
     this.dropoffLatitude,
     this.dropoffLongitude,
     this.passengerFare = 0,
+    this.isPendingOffer = false,
+    this.offerSecondsRemaining,
   });
 
   static int _i(dynamic v, [int d = 0]) =>
@@ -42,14 +49,21 @@ class SharedTripPassenger {
       dropoffLatitude: _dn(json["dropoff_latitude"]),
       dropoffLongitude: _dn(json["dropoff_longitude"]),
       passengerFare: _dn(json["passenger_fare"]) ?? 0,
+      isPendingOffer: json["is_pending_offer"] == true,
+      offerSecondsRemaining: json["offer_seconds_remaining"] == null
+          ? null
+          : _i(json["offer_seconds_remaining"]),
     );
   }
 
   bool get isOnboard => status == "onboard";
   bool get isDropped => status == "dropped";
   bool get isEnRoute => status == "en_route";
-  /// Still awaiting the driver setting off (freshly accepted / offered).
-  bool get isAwaitingEnRoute => status == "accepted" || status == "offered";
+  /// A pooled passenger the driver must accept or decline before serving them.
+  bool get isPendingPooledOffer => isPendingOffer && status == "offered";
+  /// Still awaiting the driver setting off (accepted, not yet en route).
+  bool get isAwaitingEnRoute => status == "accepted" ||
+      (status == "offered" && !isPendingOffer);
   bool get isActive => status != "dropped" && status != "cancelled" && status != "rejected";
 }
 
