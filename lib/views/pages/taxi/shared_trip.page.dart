@@ -37,8 +37,8 @@ class SharedTripPage extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, SharedTripViewModel model) {
-    if (model.isBusy && !model.hasTrip) {
-      return const Center(child: BusyIndicator());
+    if ((model.isBusy || model.isResolvingTrip) && !model.hasTrip) {
+      return _connecting(context);
     }
     if (model.lastError != null && !model.hasTrip) {
       return _error(context, model);
@@ -295,6 +295,17 @@ class SharedTripPage extends StatelessWidget {
       default:
         return status;
     }
+  }
+
+  Widget _connecting(BuildContext context) {
+    return ListView(
+      children: [
+        const SizedBox(height: 120),
+        const Center(child: BusyIndicator()),
+        const SizedBox(height: 16),
+        Center(child: Text("Opening your shared trip…".tr())),
+      ],
+    );
   }
 
   Widget _empty(BuildContext context, SharedTripViewModel model) {

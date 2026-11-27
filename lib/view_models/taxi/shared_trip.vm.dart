@@ -98,6 +98,12 @@ class SharedTripViewModel extends MyBaseViewModel {
 
   SharedStop? get nextStop => orderedStops.isNotEmpty ? orderedStops.first : null;
 
+  /// True while we are still retrying a just-opened screen that has not yet seen
+  /// its trip (e.g. immediately after accept). The page shows a connecting state
+  /// rather than the "no active trip" empty state during this window.
+  bool get isResolvingTrip =>
+      trip == null && lastError == null && _emptyRetries < _maxEmptyRetries;
+
   /// Seed the driver's position and subscribe to live updates. Safe to call once.
   void initNavigation() {
     final pos = LocationService().currentLocationData;
@@ -117,6 +123,13 @@ class SharedTripViewModel extends MyBaseViewModel {
     _fitCamera();
   }
 
+  // Guards the "order disappeared after acceptance" case: when the screen opens
+  // right after accept, a read replica can momentarily return no trip. Rather
+  // than drop straight to the bleak empty state, retry a couple of times before
+  // concluding there is genuinely no active trip.
+  int _emptyRetries = 0;
+  static const int _maxEmptyRetries = 3;
+
   Future<void> loadTrip() async {
     lastError = null;
     setBusy(true);
@@ -131,6 +144,17 @@ class SharedTripViewModel extends MyBaseViewModel {
     await _rebuildAllMarkers();
     notifyListeners();
     _fitCamera();
+
+    // Transient-empty retry: no error, but no trip yet -> try again shortly.
+    if (trip == null && lastError == null && _emptyRetries < _maxEmptyRetries) {
+      _emptyRetries++;
+      await Future.delayed(const Duration(seconds: 2));
+      if (trip == null) {
+        await loadTrip();
+      }
+    } else if (trip != null) {
+      _emptyRetries = 0; // reset once a trip is in hand
+    }
   }
 
   @override
