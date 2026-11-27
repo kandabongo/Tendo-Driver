@@ -316,7 +316,7 @@ class SharedTripViewModel extends MyBaseViewModel {
       final res = await _request.driverCancelTrip(tripId);
       if (res.allGood) {
         toastSuccessful("Trip cancelled".tr());
-        if (!_disposed) viewContext.pop();
+        if (!_disposed) Navigator.of(viewContext).pop();
       } else {
         toastError(res.message ?? "Could not cancel".tr());
       }
