@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:fuodz/models/shared_trip.dart';
 import 'package:fuodz/view_models/taxi/shared_trip.vm.dart';
 import 'package:fuodz/widgets/busy_indicator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:localize_and_translate/localize_and_translate.dart';
 import 'package:stacked/stacked.dart';
 
-/// SHARED RIDES (driver) — one trip, many passengers. Shows every passenger's
-/// pickup/dropoff and status, and lets the driver start/complete each journey
-/// independently. Handles loading / error+retry / empty states.
+/// SHARED RIDES (driver) — dedicated navigation screen for one trip with many
+/// passengers. A live map (driver position + every pickup/drop-off), a
+/// provisional nearest-next stop order with one-tap turn-by-turn navigation, and
+/// per-passenger cards to progress each journey independently.
+///
+/// The stop ordering is a driver aid only; every lifecycle transition
+/// (start/complete) is sent to the backend, which remains authoritative.
 class SharedTripPage extends StatelessWidget {
   const SharedTripPage({Key? key}) : super(key: key);
 
@@ -15,7 +20,10 @@ class SharedTripPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ViewModelBuilder<SharedTripViewModel>.reactive(
       viewModelBuilder: () => SharedTripViewModel(context),
-      onViewModelReady: (model) => model.loadTrip(),
+      onViewModelReady: (model) {
+        model.initNavigation();
+        model.loadTrip();
+      },
       builder: (context, model, child) {
         return Scaffold(
           appBar: AppBar(title: Text("Shared Trip".tr())),
@@ -41,37 +49,100 @@ class SharedTripPage extends StatelessWidget {
 
     final trip = model.trip!;
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.zero,
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Trip #${trip.id}".tr(),
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(
-                  "${trip.seatsTaken}/${trip.maxSeats} ${'seats'.tr()}",
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
+        _map(context, model),
+        if (model.nextStop != null) _nextStopBanner(context, model),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Trip #${trip.id}".tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                "${trip.seatsTaken}/${trip.maxSeats} ${'seats'.tr()}",
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
         ...model.passengers
             .map((p) => _passengerCard(context, model, p))
             .toList(),
+        const SizedBox(height: 16),
       ],
     );
   }
 
+  // ---- live map ---------------------------------------------------------
+  Widget _map(BuildContext context, SharedTripViewModel model) {
+    final target = model.driverLatLng ??
+        (model.nextStop?.latLng ?? const LatLng(-15.3875, 28.3228));
+    return SizedBox(
+      height: 260,
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(target: target, zoom: 13),
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
+        markers: model.mapMarkers,
+        onMapCreated: model.setMapController,
+        zoomControlsEnabled: false,
+      ),
+    );
+  }
+
+  Widget _nextStopBanner(BuildContext context, SharedTripViewModel model) {
+    final s = model.nextStop!;
+    final colour = s.isPickup ? Colors.orange : Colors.blue;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colour.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colour.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(s.isPickup ? Icons.my_location : Icons.flag_rounded,
+              color: colour),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.isPickup
+                      ? "${'Next: pick up'.tr()} ${s.label}"
+                      : "${'Next: drop off'.tr()} ${s.label}",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (model.orderedStops.length > 1)
+                  Text(
+                    "${model.orderedStops.length} ${'stops remaining'.tr()}",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: model.navigateToNextStop,
+            icon: const Icon(Icons.navigation_rounded, size: 18),
+            label: Text("Navigate".tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- passenger cards --------------------------------------------------
   Widget _passengerCard(
       BuildContext context, SharedTripViewModel model, SharedTripPassenger p) {
     final busy = model.isPassengerBusy(p.id);
+    final order = model.orderedStops.indexWhere((s) => s.passengerId == p.id);
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -79,8 +150,15 @@ class SharedTripPage extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.person_pin_circle_rounded, size: 20),
-                const SizedBox(width: 6),
+                if (order >= 0) ...[
+                  CircleAvatar(
+                    radius: 11,
+                    child: Text("${order + 1}",
+                        style: const TextStyle(fontSize: 11)),
+                  ),
+                  const SizedBox(width: 8),
+                ] else
+                  const Icon(Icons.person_pin_circle_rounded, size: 20),
                 Expanded(
                   child: Text(
                     p.passengerName ?? "Passenger".tr(),
@@ -91,10 +169,8 @@ class SharedTripPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            _point(Icons.my_location, "Pickup".tr(), p.pickupLatitude,
-                p.pickupLongitude),
-            _point(Icons.location_on, "Drop-off".tr(), p.dropoffLatitude,
-                p.dropoffLongitude),
+            _point(context, model, p, pickup: true),
+            _point(context, model, p, pickup: false),
             const SizedBox(height: 10),
             _actions(context, model, p, busy),
           ],
@@ -106,14 +182,21 @@ class SharedTripPage extends StatelessWidget {
   Widget _actions(BuildContext context, SharedTripViewModel model,
       SharedTripPassenger p, bool busy) {
     if (p.isDropped) {
-      return const SizedBox.shrink();
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 6),
+          Text("Dropped off".tr(),
+              style: const TextStyle(color: Colors.green)),
+        ],
+      );
     }
     if (p.isOnboard) {
       return ElevatedButton.icon(
         onPressed: busy ? null : () => model.completePassenger(p),
         icon: busy
-            ? const SizedBox(
-                width: 16, height: 16, child: BusyIndicator())
+            ? const SizedBox(width: 16, height: 16, child: BusyIndicator())
             : const Icon(Icons.flag_rounded, size: 18),
         label: Text("Complete journey".tr()),
       );
@@ -127,7 +210,15 @@ class SharedTripPage extends StatelessWidget {
     );
   }
 
-  Widget _point(IconData icon, String label, double? lat, double? lng) {
+  /// A pickup/drop-off line with a per-stop navigate action.
+  Widget _point(BuildContext context, SharedTripViewModel model,
+      SharedTripPassenger p,
+      {required bool pickup}) {
+    final lat = pickup ? p.pickupLatitude : p.dropoffLatitude;
+    final lng = pickup ? p.pickupLongitude : p.dropoffLongitude;
+    final icon = pickup ? Icons.my_location : Icons.location_on;
+    final label = pickup ? "Pickup".tr() : "Drop-off".tr();
+    final hasCoords = lat != null && lng != null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -137,12 +228,26 @@ class SharedTripPage extends StatelessWidget {
           Text("$label: ", style: const TextStyle(color: Colors.grey)),
           Expanded(
             child: Text(
-              (lat == null || lng == null)
+              !hasCoords
                   ? "-"
                   : "${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}",
               style: const TextStyle(fontSize: 12),
             ),
           ),
+          if (hasCoords && !p.isDropped)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.navigation_outlined, size: 18),
+              onPressed: () => model.navigateTo(SharedStop(
+                passengerId: p.id,
+                type: pickup ? "pickup" : "dropoff",
+                label: p.passengerName ?? "Passenger",
+                lat: lat,
+                lng: lng,
+              )),
+            ),
         ],
       ),
     );
@@ -157,21 +262,39 @@ class SharedTripPage extends StatelessWidget {
       case "dropped":
         c = Colors.green;
         break;
+      case "en_route":
       case "accepted":
         c = Colors.orange;
         break;
       default:
         c = Colors.grey;
     }
+    final label = _statusLabel(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: c.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(status.tr(),
+      child: Text(label.tr(),
           style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
     );
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case "onboard":
+        return "In transit";
+      case "dropped":
+        return "Dropped off";
+      case "en_route":
+        return "En route";
+      case "accepted":
+      case "offered":
+        return "Awaiting pickup";
+      default:
+        return status;
+    }
   }
 
   Widget _empty(BuildContext context, SharedTripViewModel model) {
