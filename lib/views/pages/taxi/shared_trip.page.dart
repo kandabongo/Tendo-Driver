@@ -26,7 +26,19 @@ class SharedTripPage extends StatelessWidget {
       },
       builder: (context, model, child) {
         return Scaffold(
-          appBar: AppBar(title: Text("Shared Trip".tr())),
+          appBar: AppBar(
+            title: Text("Shared Trip".tr()),
+            actions: [
+              if (model.hasTrip)
+                TextButton.icon(
+                  onPressed: model.cancelling ? null : () => model.cancelTrip(),
+                  icon: const Icon(Icons.close_rounded,
+                      color: Colors.red, size: 18),
+                  label: Text("Cancel".tr(),
+                      style: const TextStyle(color: Colors.red)),
+                ),
+            ],
+          ),
           body: RefreshIndicator(
             onRefresh: () => model.loadTrip(),
             child: _body(context, model),

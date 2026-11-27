@@ -41,6 +41,12 @@ class SharedTripRequest extends HttpService {
         await post("${Api.sharedRideTrip}/$tripId/accept", {}));
   }
 
+  /// Driver cancels an accepted trip (cancels all passengers, ends the trip).
+  Future<ApiResponse> driverCancelTrip(int tripId) async {
+    return ApiResponse.fromResponse(
+        await post("${Api.sharedRideTrip}/$tripId/driver-cancel", {}));
+  }
+
   Future<ApiResponse> declineTrip(int tripId) async {
     return ApiResponse.fromResponse(
         await post("${Api.sharedRideTrip}/$tripId/decline", {}));

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:fuodz/constants/app_images.dart';
 import 'package:fuodz/models/shared_trip.dart';
 import 'package:fuodz/requests/shared_trip.request.dart';
+import 'package:fuodz/services/alert.service.dart';
 import 'package:fuodz/services/location.service.dart';
 import 'package:fuodz/view_models/base.view_model.dart';
 import 'package:geolocator/geolocator.dart';
@@ -105,20 +106,28 @@ class SharedTripViewModel extends MyBaseViewModel {
       trip == null && lastError == null && _emptyRetries < _maxEmptyRetries;
 
   /// Seed the driver's position and subscribe to live updates. Safe to call once.
+  // Set once the view model is disposed, so async callbacks (the location
+  // stream, the retry timer) never touch a disposed GoogleMapController or call
+  // notifyListeners() after teardown — the source of the
+  // "GoogleMapController ... used after ... disposed" error.
+  bool _disposed = false;
+
   void initNavigation() {
     final pos = LocationService().currentLocationData;
     if (pos != null) {
       driverLatLng = LatLng(pos.latitude, pos.longitude);
     }
     _locStream ??= LocationService().getNewLocationStream().listen((p) {
+      if (_disposed) return;
       driverLatLng = LatLng(p.latitude, p.longitude);
       _rebuildStopsAndMarkers();
       _updateDriverMarker();
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     });
   }
 
   void setMapController(GoogleMapController c) {
+    if (_disposed) return;
     mapController = c;
     _fitCamera();
   }
@@ -139,9 +148,11 @@ class SharedTripViewModel extends MyBaseViewModel {
       lastError = "$error";
       setError(error);
     }
+    if (_disposed) return;
     setBusy(false);
     _rebuildStopsAndMarkers();
     await _rebuildAllMarkers();
+    if (_disposed) return;
     notifyListeners();
     _fitCamera();
 
@@ -149,6 +160,7 @@ class SharedTripViewModel extends MyBaseViewModel {
     if (trip == null && lastError == null && _emptyRetries < _maxEmptyRetries) {
       _emptyRetries++;
       await Future.delayed(const Duration(seconds: 2));
+      if (_disposed) return;
       if (trip == null) {
         await loadTrip();
       }
@@ -159,7 +171,9 @@ class SharedTripViewModel extends MyBaseViewModel {
 
   @override
   void dispose() {
+    _disposed = true;
     _locStream?.cancel();
+    mapController = null;
     super.dispose();
   }
 
@@ -279,6 +293,40 @@ class SharedTripViewModel extends MyBaseViewModel {
 
   void retry() => loadTrip();
 
+  bool cancelling = false;
+
+  /// Driver cancels the whole accepted trip (cannot continue). Server cancels
+  /// every active passenger + their orders and marks the trip cancelled.
+  Future<void> cancelTrip() async {
+    final t = trip;
+    if (t == null || cancelling) return;
+    await AlertService.confirm(
+      title: "Cancel trip?".tr(),
+      text: "This cancels the shared trip for all passengers. Continue?".tr(),
+      confirmBtnText: "Yes, cancel".tr(),
+      onConfirm: () => _doCancelTrip(t.id),
+    );
+  }
+
+  Future<void> _doCancelTrip(int tripId) async {
+    if (cancelling) return;
+    cancelling = true;
+    notifyListeners();
+    try {
+      final res = await _request.driverCancelTrip(tripId);
+      if (res.allGood) {
+        toastSuccessful("Trip cancelled".tr());
+        if (!_disposed) viewContext.pop();
+      } else {
+        toastError(res.message ?? "Could not cancel".tr());
+      }
+    } catch (error) {
+      toastError("$error");
+    }
+    cancelling = false;
+    if (!_disposed) notifyListeners();
+  }
+
   // ---- markers ----------------------------------------------------------
   Future<void> _rebuildAllMarkers() async {
     final markers = <Marker>{};
@@ -331,7 +379,7 @@ class SharedTripViewModel extends MyBaseViewModel {
 
   // ---- camera -----------------------------------------------------------
   void _fitCamera() {
-    if (mapController == null) return;
+    if (_disposed || mapController == null) return;
     final pts = <LatLng>[
       if (driverLatLng != null) driverLatLng!,
       ...orderedStops.map((s) => s.latLng),
