@@ -1,3 +1,4 @@
+import 'package:fuodz/extensions/shared_api_response.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -242,11 +243,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     setBusy(true);
     try {
       final res = await _request.acceptTrip(tripId);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Shared trip accepted".tr());
         await loadTrip();
       } else {
-        toastError(res.message ?? "Could not accept trip".tr());
+        toastError(res.sharedMessage ?? "Could not accept trip".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -262,11 +263,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.acceptPassenger(p.id);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Passenger added to your trip".tr());
         await loadTrip();
       } else {
-        toastError(res.message ?? "Could not accept passenger".tr());
+        toastError(res.sharedMessage ?? "Could not accept passenger".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -282,11 +283,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.declinePassenger(p.id);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Passenger declined".tr());
         await loadTrip();
       } else {
-        toastError(res.message ?? "Could not decline".tr());
+        toastError(res.sharedMessage ?? "Could not decline".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -313,7 +314,7 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.cancelOnePassenger(p.id);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Passenger cancelled".tr());
         // If that was the last passenger the backend closes the trip; reloading
         // reflects whichever state we're now in.
@@ -324,7 +325,7 @@ class SharedTripViewModel extends MyBaseViewModel {
           await loadTrip();
         }
       } else {
-        toastError(res.message ?? "Could not cancel passenger".tr());
+        toastError(res.sharedMessage ?? "Could not cancel passenger".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -350,11 +351,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.enRoutePassenger(p.id);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("On your way to pickup".tr());
         await loadTrip();
       } else {
-        toastError(res.message ?? "Could not update".tr());
+        toastError(res.sharedMessage ?? "Could not update".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -369,11 +370,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.startPassenger(p.id);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Passenger onboard".tr());
         await loadTrip();
       } else {
-        toastError(res.message ?? "Could not start".tr());
+        toastError(res.sharedMessage ?? "Could not start".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -388,11 +389,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.completePassenger(p.id);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Passenger journey completed".tr());
         await loadTrip();
       } else {
-        toastError(res.message ?? "Could not complete".tr());
+        toastError(res.sharedMessage ?? "Could not complete".tr());
       }
     } catch (error) {
       toastError("$error");
@@ -424,11 +425,11 @@ class SharedTripViewModel extends MyBaseViewModel {
     notifyListeners();
     try {
       final res = await _request.driverCancelTrip(tripId);
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         toastSuccessful("Trip cancelled".tr());
         if (!_disposed) Navigator.of(viewContext).pop();
       } else {
-        toastError(res.message ?? "Could not cancel".tr());
+        toastError(res.sharedMessage ?? "Could not cancel".tr());
       }
     } catch (error) {
       toastError("$error");

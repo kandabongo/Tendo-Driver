@@ -1,3 +1,4 @@
+import 'package:fuodz/extensions/shared_api_response.dart';
 import 'package:circular_countdown_timer/circular_countdown_timer.dart';
 import 'package:flutter/material.dart';
 import 'package:fuodz/extensions/context.dart';
@@ -47,7 +48,7 @@ class SharedOfferViewModel extends MyBaseViewModel {
     try {
       final res = await request.acceptTrip(offer.sharedTripId);
       AppService().audioPlayer.stop();
-      if (res.allGood) {
+      if (res.sharedSuccess) {
         _pop(offer.sharedTripId); // success -> navigate into SharedTripPage
       } else {
         // Backend rejected: expired / already assigned / not eligible. Show the
@@ -56,7 +57,7 @@ class SharedOfferViewModel extends MyBaseViewModel {
         _pop(null);
         AlertService.error(
           title: "Couldn't accept trip".tr(),
-          text: res.message ?? "This shared offer is no longer available.".tr(),
+          text: res.sharedMessage ?? "This shared offer is no longer available.".tr(),
         );
       }
     } catch (e) {
