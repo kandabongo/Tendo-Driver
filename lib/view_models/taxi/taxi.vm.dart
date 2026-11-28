@@ -25,6 +25,16 @@ import 'package:fuodz/services/driver_notification_websocket.service.dart';
 class TaxiViewModel extends MyBaseViewModel {
   TaxiViewModel(BuildContext context) {
     this.viewContext = context;
+    // Instantiate services synchronously in the constructor, in dependency
+    // order (the map manager first, because TaxiLocationService reads
+    // taxiViewModel.taxiGoogleMapManagerService in its own constructor). This
+    // guarantees none of these `late` fields can be read uninitialised during
+    // the first build frame - a LateInitializationError there renders, in a
+    // release build, as a blank GREY Home screen with no error text.
+    taxiGoogleMapManagerService = TaxiGoogleMapManagerService(this);
+    newTaxiBookingService = NewTaxiBookingService(this);
+    onGoingTaxiBookingService = OnGoingTaxiBookingService(this);
+    taxiLocationService = TaxiLocationService(this);
   }
 
   OrderRequest orderRequest = OrderRequest();
@@ -45,11 +55,9 @@ class TaxiViewModel extends MyBaseViewModel {
   void initialise() async {
     super.initialise();
     //
-    taxiGoogleMapManagerService = TaxiGoogleMapManagerService(this);
+    // Services are now instantiated in the constructor (see note there). Just
+    // ensure the custom map marker icons are loaded before we proceed.
     await taxiGoogleMapManagerService.setSourceAndDestinationIcons();
-    newTaxiBookingService = NewTaxiBookingService(this);
-    onGoingTaxiBookingService = OnGoingTaxiBookingService(this);
-    taxiLocationService = TaxiLocationService(this);
 
     //get the driver online status from the server api
     await getOnlineDriverState();

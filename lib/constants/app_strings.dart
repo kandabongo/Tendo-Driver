@@ -6,7 +6,12 @@ class AppStrings {
   //
   static String get appName => env('app_name');
   static String get companyName => env('company_name');
-  static String get googleMapApiKey => env('google_maps_key');
+  // Null-coalesce: the production app-settings may omit google_maps_key, and a
+  // null assigned into this non-nullable String getter threw "type 'Null' is
+  // not a subtype of type 'String'", crashing TaxiGoogleMapManagerService ->
+  // the whole taxi Home screen (blank grey in release). "" keeps it safe;
+  // native map tiles still use the manifest API key.
+  static String get googleMapApiKey => env('google_maps_key') ?? "";
   static String get fcmApiKey => env('fcm_key');
   static String get currencySymbol => env('currency');
   static String get countryCode => env('country_code');
@@ -115,6 +120,10 @@ class AppStrings {
     //
     getAppSettingsFromLocalStorage();
     //
+    // NOTE: returns null for a present-but-null or a missing key. Callers that
+    // index/treat the result as a Map (e.g. env('map')["useGoogleOnApp"]) rely
+    // on that null, so do NOT coalesce to "" here. Non-nullable String getters
+    // instead null-coalesce individually (see googleMapApiKey).
     return appSettingsObject != null ? appSettingsObject[ref] : "";
   }
 }
