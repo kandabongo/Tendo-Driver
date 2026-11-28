@@ -177,7 +177,19 @@ class SharedTripPage extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                _statusChip(p.status),
+                _statusChip(p),
+                // Cancel ONE accepted/en-route/onboard passenger (not a pending
+                // offer — that uses Decline — and not an already dropped one).
+                if (!p.isDropped && !p.isPendingPooledOffer)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: "Cancel passenger".tr(),
+                    icon: Icon(Icons.person_off_outlined,
+                        size: 18, color: Colors.red.shade400),
+                    onPressed: busy ? null : () => model.cancelOnePassenger(p),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -194,6 +206,36 @@ class SharedTripPage extends StatelessWidget {
   Widget _actions(BuildContext context, SharedTripViewModel model,
       SharedTripPassenger p, bool busy) {
     final spinner = const SizedBox(width: 16, height: 16, child: BusyIndicator());
+
+    // Pooled passenger awaiting the driver's decision → Accept / Decline.
+    if (p.isPendingPooledOffer) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : () => model.declinePassenger(p),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              icon: const Icon(Icons.close_rounded, size: 18),
+              label: Text("Decline".tr()),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: busy ? null : () => model.acceptPassenger(p),
+              icon: busy
+                  ? spinner
+                  : const Icon(Icons.check_rounded, size: 18),
+              label: Text(
+                p.offerSecondsRemaining != null
+                    ? "${'Accept'.tr()} (${p.offerSecondsRemaining}s)"
+                    : "Accept".tr(),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     // Dropped off — journey done.
     if (p.isDropped) {
@@ -283,23 +325,27 @@ class SharedTripPage extends StatelessWidget {
     );
   }
 
-  Widget _statusChip(String status) {
+  Widget _statusChip(SharedTripPassenger p) {
     Color c;
-    switch (status) {
-      case "onboard":
-        c = Colors.blue;
-        break;
-      case "dropped":
-        c = Colors.green;
-        break;
-      case "en_route":
-      case "accepted":
-        c = Colors.orange;
-        break;
-      default:
-        c = Colors.grey;
+    if (p.isPendingPooledOffer) {
+      c = Colors.deepPurple;
+    } else {
+      switch (p.status) {
+        case "onboard":
+          c = Colors.blue;
+          break;
+        case "dropped":
+          c = Colors.green;
+          break;
+        case "en_route":
+        case "accepted":
+          c = Colors.orange;
+          break;
+        default:
+          c = Colors.grey;
+      }
     }
-    final label = _statusLabel(status);
+    final label = _statusLabel(p);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -311,8 +357,9 @@ class SharedTripPage extends StatelessWidget {
     );
   }
 
-  String _statusLabel(String status) {
-    switch (status) {
+  String _statusLabel(SharedTripPassenger p) {
+    if (p.isPendingPooledOffer) return "New request";
+    switch (p.status) {
       case "onboard":
         return "In transit";
       case "dropped":
@@ -323,7 +370,7 @@ class SharedTripPage extends StatelessWidget {
       case "offered":
         return "Awaiting pickup";
       default:
-        return status;
+        return p.status;
     }
   }
 

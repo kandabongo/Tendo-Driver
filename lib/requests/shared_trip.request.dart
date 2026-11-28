@@ -41,6 +41,25 @@ class SharedTripRequest extends HttpService {
         await post("${Api.sharedRideTrip}/$tripId/accept", {}));
   }
 
+  /// Driver ACCEPTS a pooled passenger offered onto an already-active trip
+  /// (offered -> accepted). Server-authoritative + idempotent.
+  Future<ApiResponse> acceptPassenger(int passengerId) async {
+    return ApiResponse.fromResponse(
+        await post("${Api.sharedRidePassenger}/$passengerId/accept", {}));
+  }
+
+  /// Driver DECLINES a pooled passenger — frees the seat; the trip continues.
+  Future<ApiResponse> declinePassenger(int passengerId) async {
+    return ApiResponse.fromResponse(
+        await post("${Api.sharedRidePassenger}/$passengerId/decline", {}));
+  }
+
+  /// Driver cancels ONE passenger without ending the whole trip.
+  Future<ApiResponse> cancelOnePassenger(int passengerId) async {
+    return ApiResponse.fromResponse(
+        await post("${Api.sharedRidePassenger}/$passengerId/driver-cancel", {}));
+  }
+
   /// Driver cancels an accepted trip (cancels all passengers, ends the trip).
   Future<ApiResponse> driverCancelTrip(int tripId) async {
     return ApiResponse.fromResponse(

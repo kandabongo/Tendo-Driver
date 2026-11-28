@@ -76,5 +76,43 @@ void main() {
       expect(t2.passengers, isEmpty);
       expect(t2.id, 0);
     });
+
+    test('pending pooled offer is flagged and kept off the stop list', () {
+      final r = {
+        "trip": {"id": 1, "status": "active", "max_seats": 4, "seats_taken": 2},
+        "passengers": [
+          {"id": 1, "status": "onboard", "passenger_name": "A"},
+          {
+            "id": 2,
+            "status": "offered",
+            "is_pending_offer": true,
+            "offer_seconds_remaining": 25,
+            "passenger_name": "B",
+          },
+        ],
+      };
+      final trip = DriverSharedTrip.fromResponse(Map<String, dynamic>.from(r));
+      final b = trip.passengers.firstWhere((p) => p.id == 2);
+      expect(b.isPendingOffer, isTrue);
+      expect(b.isPendingPooledOffer, isTrue);
+      expect(b.offerSecondsRemaining, 25);
+      // A pending offer is not yet "awaiting pickup" (not a stop to serve).
+      expect(b.isAwaitingEnRoute, isFalse);
+      // Both still count as active (seat held provisionally).
+      expect(trip.activePassengers.length, 2);
+    });
+
+    test("a plain 'offered' first passenger (no flag) is awaiting pickup, not a pooled offer", () {
+      final r = {
+        "trip": {"id": 1, "status": "matching", "max_seats": 4, "seats_taken": 1},
+        "passengers": [
+          {"id": 1, "status": "offered"}, // no is_pending_offer
+        ],
+      };
+      final trip = DriverSharedTrip.fromResponse(Map<String, dynamic>.from(r));
+      final p = trip.passengers.first;
+      expect(p.isPendingPooledOffer, isFalse);
+      expect(p.isAwaitingEnRoute, isTrue);
+    });
   });
 }
