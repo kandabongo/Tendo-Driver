@@ -115,6 +115,14 @@ class AppStrings {
     //
     getAppSettingsFromLocalStorage();
     //
-    return appSettingsObject != null ? appSettingsObject[ref] : "";
+    // Coalesce a missing/null setting to "" instead of returning null. A null
+    // here is assigned straight into non-nullable String getters such as
+    // googleMapApiKey, which then throw "type 'Null' is not a subtype of type
+    // 'String'". That crash, raised while constructing TaxiGoogleMapManager-
+    // Service (PolylinePoints(apiKey: AppStrings.googleMapApiKey)), took down
+    // the whole taxi Home screen (blank grey in release). Returning "" keeps
+    // every String getter safe when the backend app-settings omit a key; the
+    // native map tiles still use the manifest API key.
+    return appSettingsObject != null ? (appSettingsObject[ref] ?? "") : "";
   }
 }
