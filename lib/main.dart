@@ -54,6 +54,34 @@ void main() async {
       HttpOverrides.global = new MyHttpOverrides();
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
+      // DIAGNOSTIC (temporary): in a RELEASE build a build-time exception
+      // renders as a blank GREY box with no text - which is exactly what hid
+      // the cause of the grey Home screen. This replaces that silent grey with
+      // the real exception + widget location + top stack frames, drawn on
+      // screen so it can be screenshotted (Logcat is unavailable). It also
+      // mirrors the same details to Crashlytics. Remove once the root cause is
+      // confirmed and fixed.
+      ErrorWidget.builder = (FlutterErrorDetails details) {
+        FirebaseCrashlytics.instance.recordFlutterError(details);
+        final stackHead =
+            details.stack?.toString().split('\n').take(14).join('\n') ?? '';
+        return Material(
+          color: const Color(0xFFB00020),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                "APP ERROR (diagnostic build)\n\n"
+                "${details.exceptionAsString()}\n\n"
+                "WHERE: ${details.context?.toString() ?? '(unknown)'}\n\n"
+                "$stackHead",
+                style: const TextStyle(color: Colors.white, fontSize: 12.5),
+              ),
+            ),
+          ),
+        );
+      };
+
       //font
       GoogleFonts.pendingFonts([GoogleFonts.plusJakartaSans()]);
       // Run app!
